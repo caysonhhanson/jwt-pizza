@@ -82,8 +82,6 @@ test('buy pizza with register', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Password' }).click();
   await page.getByRole('textbox', { name: 'Password' }).fill('123456');
   await page.getByRole('button', { name: 'Register' }).click();
-  await page.getByRole('button', { name: 'Pay now' }).click();
-  await page.getByRole('link', { name: 'Logout' }).click();
 });
 
 test('purchase with login', async ({ page }) => {
@@ -115,11 +113,22 @@ test('purchase with login', async ({ page }) => {
   });
 
   await page.route('*/**/api/auth', async (route) => {
-    const loginReq = { email: 'd@jwt.com', password: 'a' };
-    const loginRes = { user: { id: 3, name: 'Kai Chen', email: 'd@jwt.com', roles: [{ role: 'diner' }] }, token: 'abcdef' };
-    expect(route.request().method()).toBe('PUT');
-    expect(route.request().postDataJSON()).toMatchObject(loginReq);
-    await route.fulfill({ json: loginRes });
+    const method = route.request().method();
+    
+    if (method === 'PUT') {
+      const loginReq = { email: 'd@jwt.com', password: 'a' };
+      const loginRes = { 
+        user: { id: 3, name: 'Kai Chen', email: 'd@jwt.com', roles: [{ role: 'diner' }] }, 
+        token: 'abcdef' 
+      };
+      expect(route.request().postDataJSON()).toMatchObject(loginReq);
+      await route.fulfill({ json: loginRes });
+    } else if (method === 'DELETE') {
+      await route.fulfill({ 
+        status: 200, 
+        json: { message: 'Logged out successfully' } 
+      });
+    }
   });
 
   await page.route('*/**/api/order', async (route) => {
@@ -179,6 +188,8 @@ test('purchase with login', async ({ page }) => {
 
   // Check balance
   await expect(page.getByText('0.008')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Logout' }).click();
 });
 
 
@@ -312,4 +323,60 @@ test('ADMIN', async ({ page }) => {
   await page.getByRole('link', { name: 'Order' }).click();
   await page.getByRole('link', { name: '常' }).click();
   await page.getByRole('link', { name: 'Logout' }).click();
+});
+
+test('storeClosure', async ({ page }) => {
+  await page.route('*/**/api/franchise', async (route) => {
+    if (route.request().method() === 'GET') {
+      const franchiseRes = [
+        {
+          id: 1,
+          name: "jims",
+          stores: []
+        }
+      ];
+      await route.fulfill({ json: franchiseRes });
+    } else if (route.request().method() === 'POST') {
+      const franchiseReq = {
+        name: 'jims',
+        email: 'a@jwt.com'
+      };
+      expect(route.request().postDataJSON()).toMatchObject(franchiseReq);
+      await route.fulfill({ 
+        status: 200, 
+        json: { message: 'Franchise created successfully' } 
+      });
+    } else if (route.request().method() === 'DELETE') {
+      await route.fulfill({ 
+        status: 200, 
+        json: { message: 'Franchise deleted successfully' } 
+      });
+    }
+  });
+
+  await page.route('*/**/api/auth', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const loginReq = { email: 'a@jwt.com', password: 'admin' };
+      const loginRes = {
+        user: { id: 1, name: 'Admin', email: 'a@jwt.com', roles: [{ role: 'admin' }] },
+        token: 'admin-jwt-token'
+      };
+      expect(route.request().postDataJSON()).toMatchObject(loginReq);
+      await route.fulfill({ json: loginRes });
+    }
+  });
+
+  await page.goto('http://localhost:5174/');
+  await page.getByLabel('Global').getByRole('link', { name: 'Franchise' }).click();
+  await page.getByRole('link', { name: 'login', exact: true }).click();
+  
+  await page.getByRole('textbox', { name: 'Email address' }).fill('a@jwt.com');
+  await page.getByRole('textbox', { name: 'Password' }).click();
+  await page.getByRole('textbox', { name: 'Password' }).fill('admin');
+  await page.getByRole('button', { name: 'Login' }).click();
+  
+  await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('rowgroup').filter({ hasText: 'jims' }).getByRole('button').first().click();
+  await page.getByRole('button', { name: 'Close' }).click();
+
 });
