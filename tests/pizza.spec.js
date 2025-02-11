@@ -51,7 +51,10 @@ test('buy pizza with register', async ({ page }) => {
       order: {
         items: [
           { menuId: 1, description: "Veggie", price: 0.0038 },
-          { menuId: 2, description: "Pepperoni", price: 0.0042 }
+          { menuId: 2, description: "Pepperoni", price: 0.0042 },
+          { menuId: 3, description: "Margarita", price: 0.0042 },
+          { menuId: 4, description: "Crusty", price: 0.0028 },
+          { menuId: 5, description: "Charred Leopard", price: 0.0099 }
         ],
         storeId: "1",
         franchiseId: 1,
@@ -149,7 +152,6 @@ await page.getByRole('button', { name: 'Cancel' }).click();
 await page.getByRole('link', { name: 'Logout' }).click();});
 
 test('ADMIN', async ({ page }) => {
-  // Mock franchise endpoint
   await page.route('*/**/api/franchise', async (route) => {
     const franchiseRes = [
       {
@@ -171,17 +173,19 @@ test('ADMIN', async ({ page }) => {
 
   
   await page.route('*/**/api/auth', async (route) => {
-    const loginReq = { email: 'a@jwt.com', password: 'admin' };
-    const loginRes = {
-      user: { id: 1, name: '常', email: 'a@jwt.com', roles: [{ role: 'admin' }] },
-      token: 'admin-jwt-token'
-    };
-    expect(route.request().method()).toBe('PUT');
-    expect(route.request().postDataJSON()).toMatchObject(loginReq);
-    await route.fulfill({ json: loginRes });
+    if (route.request().method() === 'PUT') {
+      const loginReq = { email: 'a@jwt.com', password: 'admin' };
+      const loginRes = {
+        user: { id: 1, name: '常', email: 'a@jwt.com', roles: [{ role: 'admin' }] },
+        token: 'admin-jwt-token'
+      };
+      expect(route.request().postDataJSON()).toMatchObject(loginReq);
+      await route.fulfill({ json: loginRes });
+    } else if (route.request().method() === 'DELETE') {
+      await route.fulfill({ status: 200, json: { message: 'Logged out successfully' } });
+    }
   });
 
-  // Mock menu endpoint
   await page.route('*/**/api/order/menu', async (route) => {
     const menuRes = [
       { id: 1, title: "Veggie", image: "pizza1.png", price: 0.0038, description: "A garden of delight" },
