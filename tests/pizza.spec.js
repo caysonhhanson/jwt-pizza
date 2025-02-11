@@ -121,22 +121,63 @@ await page.getByRole('link', { name: 'ch', exact: true }).click();
 await page.getByRole('link', { name: 'Logout' }).click();});
 
 test('ADMIN', async ({ page }) => {
-await page.goto('http://localhost:5173/');
-await page.getByLabel('Global').getByRole('link', { name: 'Franchise' }).click();
-await page.getByRole('link', { name: 'login', exact: true }).click();
-await page.getByRole('textbox', { name: 'Email address' }).fill('a@jwt.com');
-await page.getByRole('textbox', { name: 'Password' }).click();
-await page.getByRole('textbox', { name: 'Password' }).fill('admin');
-await page.getByRole('textbox', { name: 'Password' }).press('Enter');
-await page.getByRole('button', { name: 'Login' }).click();
-await page.getByRole('link', { name: 'Admin' }).click();
-await page.getByRole('button', { name: 'Add Franchise' }).click();
-await page.getByRole('textbox', { name: 'franchise name' }).click();
-await page.getByRole('textbox', { name: 'franchise name' }).fill('bigchickenpizza');
-await page.getByRole('textbox', { name: 'franchisee admin email' }).click();
-await page.getByRole('textbox', { name: 'franchisee admin email' }).fill('bcp@gmail.com');
-await page.getByRole('button', { name: 'Cancel' }).click();
-await page.getByRole('link', { name: '常' }).click();
-await page.getByRole('link', { name: 'Order' }).click();
-await page.getByRole('link', { name: '常' }).click();
-await page.getByRole('link', { name: 'Logout' }).click();});
+  // Mock franchise endpoint
+  await page.route('*/**/api/franchise', async (route) => {
+    const franchiseRes = [
+      {
+        id: 2,
+        name: "LotaPizza",
+        stores: [
+          { id: 4, name: "Lehi" },
+          { id: 5, name: "Springville" }
+        ]
+      },
+      {
+        id: 3,
+        name: "PizzaCorp",
+        stores: [{ id: 7, name: "Spanish Fork" }]
+      }
+    ];
+    await route.fulfill({ json: franchiseRes });
+  });
+
+  // Mock admin login endpoint
+  await page.route('*/**/api/auth', async (route) => {
+    const loginReq = { email: 'a@jwt.com', password: 'admin' };
+    const loginRes = {
+      user: { id: 1, name: '常', email: 'a@jwt.com', roles: [{ role: 'admin' }] },
+      token: 'admin-jwt-token'
+    };
+    expect(route.request().method()).toBe('PUT');
+    expect(route.request().postDataJSON()).toMatchObject(loginReq);
+    await route.fulfill({ json: loginRes });
+  });
+
+  // Mock menu endpoint
+  await page.route('*/**/api/order/menu', async (route) => {
+    const menuRes = [
+      { id: 1, title: "Veggie", image: "pizza1.png", price: 0.0038, description: "A garden of delight" },
+      { id: 2, title: "Pepperoni", image: "pizza2.png", price: 0.0042, description: "Spicy treat" }
+    ];
+    await route.fulfill({ json: menuRes });
+  });
+
+  await page.goto('/');
+  await page.getByLabel('Global').getByRole('link', { name: 'Franchise' }).click();
+  await page.getByRole('link', { name: 'login', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Email address' }).fill('a@jwt.com');
+  await page.getByRole('textbox', { name: 'Password' }).click();
+  await page.getByRole('textbox', { name: 'Password' }).fill('admin');
+  await page.getByRole('button', { name: 'Login' }).click();
+  await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('button', { name: 'Add Franchise' }).click();
+  await page.getByRole('textbox', { name: 'franchise name' }).click();
+  await page.getByRole('textbox', { name: 'franchise name' }).fill('bigchickenpizza');
+  await page.getByRole('textbox', { name: 'franchisee admin email' }).click();
+  await page.getByRole('textbox', { name: 'franchisee admin email' }).fill('bcp@gmail.com');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('link', { name: '常' }).click();
+  await page.getByRole('link', { name: 'Order' }).click();
+  await page.getByRole('link', { name: '常' }).click();
+  await page.getByRole('link', { name: 'Logout' }).click();
+});
