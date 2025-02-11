@@ -7,6 +7,60 @@ test('home page', async ({ page }) => {
 });
 
 test('buy pizza with register', async ({ page }) => {
+  await page.route('*/**/api/order/menu', async (route) => {
+    const menuRes = [
+      { id: 1, title: "Veggie", image: "pizza1.png", price: 0.0038, description: "A garden of delight" },
+      { id: 2, title: "Pepperoni", image: "pizza2.png", price: 0.0042, description: "Spicy treat" },
+      { id: 3, title: "Margarita", image: "pizza3.png", price: 0.0042, description: "Essential classic" },
+      { id: 4, title: "Crusty", image: "pizza4.png", price: 0.0028, description: "A dry mouthed favorite" },
+      { id: 5, title: "Charred Leopard", image: "pizza5.png", price: 0.0099, description: "For those with a darker side" }
+    ];
+    await route.fulfill({ json: menuRes });
+  });
+
+  await page.route('*/**/api/franchise', async (route) => {
+    const franchiseRes = [
+      {
+        id: 1,
+        name: "PizzaPlace",
+        stores: [
+          { id: 1, name: "Provo" }
+        ]
+      }
+    ];
+    await route.fulfill({ json: franchiseRes });
+  });
+
+  await page.route('*/**/api/auth/register', async (route) => {
+    const registerReq = {
+      name: 'cayson hanson',
+      email: 'test@gmail.com',
+      password: '123456'
+    };
+    const registerRes = {
+      user: { id: 1, name: 'cayson hanson', email: 'test@gmail.com', roles: [{ role: 'diner' }] },
+      token: 'mock-jwt-token'
+    };
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().postDataJSON()).toMatchObject(registerReq);
+    await route.fulfill({ json: registerRes });
+  });
+
+  await page.route('*/**/api/order', async (route) => {
+    const orderRes = {
+      order: {
+        items: [
+          { menuId: 1, description: "Veggie", price: 0.0038 },
+          { menuId: 2, description: "Pepperoni", price: 0.0042 }
+        ],
+        storeId: "1",
+        franchiseId: 1,
+        id: 1
+      },
+      jwt: 'mock-jwt-token'
+    };
+    await route.fulfill({ json: orderRes });
+  });
   await page.goto('http://localhost:5173/');
   await page.getByRole('button', { name: 'Order now' }).click();
   await page.getByRole('combobox').selectOption('1');
