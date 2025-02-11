@@ -194,6 +194,12 @@ test('ADMIN', async ({ page }) => {
     await route.fulfill({ json: menuRes });
   });
 
+  await page.route('*/**/api/franchise', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({ status: 200, json: { message: 'Franchise created' } });
+    }
+  });
+
   await page.goto('/');
   await page.getByLabel('Global').getByRole('link', { name: 'Franchise' }).click();
   await page.getByRole('link', { name: 'login', exact: true }).click();
@@ -207,7 +213,7 @@ test('ADMIN', async ({ page }) => {
   await page.getByRole('textbox', { name: 'franchise name' }).fill('bigchickenpizza');
   await page.getByRole('textbox', { name: 'franchisee admin email' }).click();
   await page.getByRole('textbox', { name: 'franchisee admin email' }).fill('bcp@gmail.com');
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
   await page.getByRole('link', { name: '常' }).click();
   await page.getByRole('link', { name: 'Order' }).click();
   await page.getByRole('link', { name: '常' }).click();
