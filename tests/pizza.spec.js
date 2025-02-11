@@ -366,7 +366,7 @@ test('storeClosure', async ({ page }) => {
     }
   });
 
-  await page.goto('http://localhost:5174/');
+  await page.goto('/');
   await page.getByLabel('Global').getByRole('link', { name: 'Franchise' }).click();
   await page.getByRole('link', { name: 'login', exact: true }).click();
   
