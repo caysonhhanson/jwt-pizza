@@ -1,5 +1,7 @@
 import { test, expect } from 'playwright-test-coverage';
 
+test.setTimeout(30000); 
+
 test('home page', async ({ page }) => {
   await page.goto('/');
 
