@@ -4,7 +4,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-
 jobs:
   build:
     name: Build
@@ -14,41 +13,34 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      
       - name: set version
         id: set_version
         run: |
           version=$(date +'%Y%m%d.%H%M%S')
           echo "version=$version" >> "$GITHUB_OUTPUT"
           printf '{"version": "%s" }' "$version" > public/version.json
-      
       - name: Build
         run: |
           npm ci && npm run build
           # Removing 404.html creation since CloudFront will handle routing
-      
       - name: Update dist artifact
         uses: actions/upload-artifact@v4
         with:
           name: package
           path: dist/
-      
       - name: Run tests
         run: |
           npx playwright install --with-deps chromium
           npm run test:coverage
-      
       - name: Update coverage
         run: |
           coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
           color=$(echo "$coverage < 80" | bc -l | awk '{if ($1) print "red"; else print "green"}')
           curl -s -X POST "https://badge.cs329.click/badge/${{ github.repository_owner }}/jwtpizzacoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}" -o /dev/null
-
   deploy:
     needs: build
     permissions:
@@ -63,15 +55,33 @@ jobs:
           audience: sts.amazonaws.com
           aws-region: us-east-1
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT }}:role/${{ secrets.CI_IAM_ROLE }}
-
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
           name: package
           path: dist/
-
       - name: Push to AWS S3
         run: |
           echo Deploying $version
           aws s3 cp dist s3://${{ secrets.APP_BUCKET }} --recursive
           aws cloudfront create-invalidation --distribution-id ${{ secrets.DISTRIBUTION_ID }} --paths "/*"
+
+  release:
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5
+        env:
+          version: ${{needs.build.outputs.version}}
+        with:
+          tag: version-${{ env.version }}
+          name: Version ${{ env.version }}
+          body: |
+            ## 🚀 Changes
+
+            ${{ github.event.head_commit.message }}
+
+            **commit**: ${{ github.sha }}
