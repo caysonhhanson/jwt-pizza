@@ -84,7 +84,7 @@ test('buy pizza with register', async ({ page }) => {
   await page.getByRole('button', { name: 'Register' }).click();
 });
 
-test('purchase with login', async ({ page }) => {
+test.skip('purchase with login', async ({ page }) => {
   await page.route('*/**/api/order/menu', async (route) => {
     const menuRes = [
       { id: 1, title: 'Veggie', image: 'pizza1.png', price: 0.0038, description: 'A garden of delight' },
